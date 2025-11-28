@@ -1,0 +1,112 @@
+# ========================================
+# API 路由中间件配置示例
+# ========================================
+# 使用说明：
+# 1. 复制此文件为 config.yaml
+# 2. 根据实际情况修改以下配置项
+# 3. 删除不需要的项目配置
+# ========================================
+
+# ----------------------------------------
+# HTTP 服务配置
+# ----------------------------------------
+http:
+  port: 8080                # 路由中间件监听端口（建议 8080）
+  read_timeout: 30s         # 读取请求超时时间
+  write_timeout: 30s        # 写入响应超时时间
+  idle_timeout: 120s        # 空闲连接超时时间
+
+# ----------------------------------------
+# Redis 配置（用于存储 API Key 路由映射）
+# ----------------------------------------
+redis:
+  addr: "localhost:6379"    # Redis地址（Docker环境请改为 "redis:6379"）
+  password: ""              # Redis密码（如无密码则留空）
+  db: 0                     # Redis数据库编号（默认 0）
+  pool_size: 100            # 连接池最大连接数
+  min_idle_conns: 50        # 连接池最小空闲连接数
+
+# ----------------------------------------
+# 本地缓存配置（提升查询性能）
+# ----------------------------------------
+local_cache:
+  max_size: 100000          # 最多缓存 10 万个热点 API Key
+  ttl: 300s                 # 缓存有效期 5 分钟
+
+# ----------------------------------------
+# 项目配置（可配置多个项目）
+# ----------------------------------------
+# 数据库 SSL 配置说明：
+# - MySQL ssl_mode 可选值（仅支持内置模式）:
+#   * "true" 或 "require" - 强制使用 SSL/TLS 加密（不验证证书）
+#   * "skip-verify" - 使用 SSL 但跳过证书验证（推荐，适用于自签名证书）
+#   * "false" 或 "disable" 或留空 - 不使用 SSL（明文传输，不推荐）
+#   * 其他值会被忽略（自定义 TLS 配置需代码中先注册）
+# - PostgreSQL ssl_mode 可选值:
+#   * "disable" - 不使用 SSL（明文传输，不推荐）
+#   * "require" - 强制使用 SSL，但不验证证书
+#   * "verify-ca" - 使用 SSL 并验证服务器证书（需要 CA 证书）
+#   * "verify-full" - 使用 SSL 并验证服务器证书和主机名（最安全）
+# ⚠️ 建议：跨公网连接数据库时务必启用 SSL，防止密钥和密码泄露
+# ----------------------------------------
+projects:
+  # 项目 A 配置示例（使用 MySQL 数据库）
+  project_a:
+    # 后端服务地址（此项目的 API 实际处理地址）
+    backends:
+      - "https://project-a.example.com"
+      # 多个 backend 用于负载均衡（可选）
+      # - "https://project-a-2.example.com"
+
+    # 数据库配置（用于同步 API Key，只需只读权限）
+    database:
+      type: "mysql"                       # 数据库类型: "mysql" 或 "postgres"
+      host: "db-a.example.com"            # 数据库地址（IP地址或域名）
+      port: 3306                          # MySQL 默认端口: 3306
+      user: "readonly"                    # ⚠️ 数据库用户名（建议使用只读账号）
+      password: "your_password_here"      # ⚠️ 数据库密码（请替换为实际密码）
+      dbname: "one_api"                   # 数据库名称（通常是 one_api）
+      max_open_conns: 10                  # 最大打开连接数
+      max_idle_conns: 5                   # 最大空闲连接数
+      ssl_mode: "skip-verify"             # SSL模式（MySQL可选: true, false, skip-verify, 或留空禁用）
+
+  # 项目 B 配置示例（使用 PostgreSQL 数据库）
+  project_b:
+    # 后端服务地址
+    backends:
+      - "https://project-b.example.com"
+
+    # 数据库配置
+    database:
+      type: "postgres"                    # 数据库类型: "mysql" 或 "postgres"
+      host: "db-b.example.com"            # 数据库地址（IP地址或域名）
+      port: 5432                          # PostgreSQL 默认端口: 5432
+      user: "readonly"                    # ⚠️ 数据库用户名（建议使用只读账号）
+      password: "your_password_here"      # ⚠️ 数据库密码（请替换为实际密码）
+      dbname: "one_api"                   # 数据库名称（通常是 one_api）
+      max_open_conns: 10                  # 最大打开连接数
+      max_idle_conns: 5                   # 最大空闲连接数
+      ssl_mode: "require"                 # SSL模式（PostgreSQL可选: disable, require, verify-ca, verify-full）
+
+# ----------------------------------------
+# 数据同步任务配置
+# ----------------------------------------
+sync:
+  interval: 5m              # 同步间隔（建议 5 分钟，格式: 1m, 5m, 10m）
+  batch_size: 1000          # 每批次处理的 Key 数量（建议 1000）
+  enabled: true             # 是否启用自动同步（true=启用，false=禁用）
+
+# ----------------------------------------
+# Prometheus 监控配置
+# ----------------------------------------
+metrics:
+  enabled: true             # 是否启用 Prometheus 指标（true=启用）
+  port: 9090                # Prometheus 指标暴露端口（建议 9090）
+  path: "/metrics"          # Prometheus 指标路径（通常是 /metrics）
+
+# ----------------------------------------
+# 日志配置
+# ----------------------------------------
+log:
+  level: "info"             # 日志级别: debug, info, warn, error
+  format: "json"            # 日志格式: json（结构化）或 text（纯文本）

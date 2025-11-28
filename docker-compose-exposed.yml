@@ -1,0 +1,61 @@
+version: '3.8'
+
+services:
+  new-api:
+    image: ghcr.io/xiaoshi569/new-api:v1.3.62
+    restart: always
+    command: --log-dir /app/logs
+    ports:
+      - ${HOST_IP}:${WEB_HTTP_PORT}:3000
+    volumes:
+      - ${APP_PATH}/data:/data
+      - ${APP_PATH}/logs:/app/logs
+      - /etc/machine-id:/host/machine-id:ro
+    environment:
+      - SQL_DSN=root:eZ1rW9jR6mU6uP4b@tcp(mysql:3306)/new-api
+      - REDIS_CONN_STRING=redis://redis
+      - SESSION_SECRET=${SESSION_SECRET}
+      - TZ=Asia/Shanghai
+      - ERROR_LOG_ENABLED=true
+      - STREAMING_TIMEOUT=300
+    depends_on:
+      - redis
+      - mysql
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -q -O - http://localhost:3000/api/status | grep -o '\"success\":\\s*true' | awk -F: '{print $2}'" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    labels:
+      createdBy: "bt_apps"
+    networks:
+      - baota_net
+
+  redis:
+    image: redis:latest
+    restart: always
+    ports:
+      - "6379:6379"  # 暴露 Redis 端口到宿主机，允许外部访问
+    labels:
+      createdBy: "bt_apps"
+    networks:
+      - baota_net
+
+  mysql:
+    image: mysql:8.2
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: eZ1rW9jR6mU6uP4b
+      MYSQL_DATABASE: new-api
+    ports:
+      - "3306:3306"  # 暴露 MySQL 端口到宿主机，允许外部访问
+    volumes:
+      - ${APP_PATH}/mysql_data:/var/lib/mysql
+    labels:
+      createdBy: "bt_apps"
+    networks:
+      - baota_net
+
+networks:
+  baota_net:
+    external: true
